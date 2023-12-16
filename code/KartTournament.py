@@ -32,45 +32,82 @@ class KartTournament:
         self.deriveTournamentStructure()
 
     def deriveTournamentStructure(self):
-        paired_teams=[]
-        team_seats = []
+        """Fills the _pairings list with the tournament structure
+                pairing {'teams':[] , pairing properties}
+                    team: {'members':[], team properties}
+                       member:{player_index}
+                    """
+        members=[]
+        teams=[]
         for player_index in self._seatinglist:
-            if len(team_seats)>= self._pairsize[len(self._pairings)]: # current team is complete
-                paired_teams.append(team_seats)
-                team_seats=[]
-                if len(paired_teams)>=2: # the pairing has two members
-                    self._pairings.append(paired_teams)
-                    paired_teams=[]
+            if len(members)>= self._pairsize[len(self._pairings)]: # current team is complete
+                team = {'members': members}
+                self.determine_team_skill(team)
+                teams.append(team)
+                members=[]
+                if len(teams)>=2: # the pairing has two members
+                    pairing={'teams':teams}
+                    self.determine_pairing_skill_releation(pairing)
+                    self._pairings.append(pairing)
+                    teams=[]
             # place member in the current team
             team_member={'player_index':player_index}
-            team_seats.append(team_member)
-        paired_teams.append(team_seats)
-        self._pairings.append(paired_teams)
+            members.append(team_member)
+        team = {'members': members}
+        self.determine_team_skill(team)
+        teams.append(team)      
+        pairing = {'teams': teams}
+        self.determine_pairing_skill_releation(pairing)
+        self._pairings.append(pairing)
+
+    def determine_team_skill(self,team):
+        skillsum=0
+        for member in team['members']:
+            playerproperty = self._playerproperties[member['player_index']]
+            skillsum += playerproperty['skill']
+        team['skillsum']=skillsum
+
+    def determine_pairing_skill_releation(self,pairing):
+        teams=pairing['teams']
+        skilldiff=abs(teams[0]['skillsum']-teams[1]['skillsum'])
+        pairing['skilldiff']=skilldiff
 
     def print_pairings(self):
-        for paired_teams in self._pairings:
-            print (">>>>>>>>>>>>>>>>>>>>>>>>>>>")
-            for team_index,team_seats in enumerate(paired_teams):
+        for pairing in self._pairings:
+            print ("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+            teams=pairing['teams']
+            for team_index,team in enumerate(pairing['teams']):
                 if team_index>0:
-                    print("       vs             ")
-                for team_member in team_seats:
+                    print(f" --- ( {teams[0]['skillsum']}  )  [{pairing['skilldiff']}  ]  ({teams[1]['skillsum']})  ---")
+                for team_member in team['members']:
                     playerproperty = self._playerproperties[team_member['player_index']]
                     print(f"{playerproperty['name']} ({playerproperty['skill']})")
-            print ("<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+            print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 # end of class KartTournament
 
-playerproperties = [{'name':'Mario',      'skill':1.25},{'name':'Luigi'         , 'skill':1.25}
-                    ,{'name':'Bowser',    'skill':1.25},{'name':'Princess Peach', 'skill':1.25}
-                    ,{'name':'Rosalina',  'skill':1.25},{'name':'Toad'          , 'skill':1.00}
-                    ,{'name':'Daisy',     'skill':1.00},{'name':'Link'          , 'skill':1.00}
-                    ,{'name':'Wario',     'skill':1.00},{'name':'Waluigi'       , 'skill':1.00}
-                    ,{'name':'Bowser Jr', 'skill':0.75},{'name':'Donkey Kong'   , 'skill':0.75}
-                    ,{'name':'Diddy Kong','skill':0.75},{'name':'Baby Mario'    , 'skill':0.75}
-                    ,{'name':'Baby Daisy','skill':0.75},{'name':'Baby Luigi'    , 'skill':0.75}
-                    ,{'name':'Wiggler','skill': 1.25}, {'name': 'Baby Peach', 'skill': 1.00}
-                    ,{'name':'King Boo','skill': 1.25}, {'name': 'Baby Rosalina', 'skill': 1.00}
-                    , {'name': 'Lakitu', 'skill': 1.00}
-                    ]
+playerproperties = [
+    {'name':'Mario',          'skill': 1.25, 'location':'D'}
+   ,{'name':'Luigi'         , 'skill': 1.25, 'location':'B'}
+   ,{'name':'Bowser',         'skill': 1.25, 'location':'D'}
+   ,{'name':'Princess Peach', 'skill': 1.25, 'location':'F'}
+   ,{'name':'Rosalina',       'skill': 1.25, 'location':'B'}
+   ,{'name':'Toad'          , 'skill': 1.00, 'location':'D'}
+   ,{'name':'Daisy',          'skill': 1.00, 'location':'F'}
+   ,{'name':'Link'          , 'skill': 1.00, 'location':'D'}
+   ,{'name':'Wario',          'skill': 1.00, 'location':'B'}
+   ,{'name':'Waluigi'       , 'skill': 1.00, 'location':'D'}
+   ,{'name':'Bowser Jr',      'skill': 0.75, 'location':'F'}
+   ,{'name':'Donkey Kong'   , 'skill': 0.75, 'location':'B'}
+   ,{'name':'Diddy Kong',     'skill': 0.75, 'location':'D'}
+   ,{'name':'Baby Mario'    , 'skill': 0.75, 'location':'B'}
+   ,{'name':'Baby Daisy',     'skill': 0.75, 'location':'B'}
+   ,{'name':'Baby Luigi'    , 'skill': 0.75, 'location':'B'}
+   ,{'name':'Wiggler',        'skill': 1.25, 'location':'D'}
+   ,{'name': 'Baby Peach',    'skill': 1.00, 'location':'F'}
+   ,{'name':'King Boo',       'skill': 1.25, 'location':'B'}
+   ,{'name': 'Baby Rosalina', 'skill': 1.00, 'location':'D'}
+   ,{'name': 'Lakitu',        'skill': 1.00, 'location':'F'}
+     ]
 
 if __name__ == '__main__':
     myFirstGame=KartTournament(playerproperties)
