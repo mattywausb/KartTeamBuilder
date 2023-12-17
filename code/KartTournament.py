@@ -37,22 +37,33 @@ class KartTournament:
         elif recombinationMode==RM_OX1:
             self.build_from_OX1_crossover(ancestor_A, ancestor_B)
 
-        self.deriveTournamentStructure()
-        self.calculate_fitness()
+
 
 
     def build_gene_from_scratch(self):
-        drawBowl=[]
         number_of_players = len(self._playerproperties)
-        # seed the drawing bowl with all player numbers
-        for player_index in range(0,number_of_players):
-            drawBowl.append(player_index)
+        try_again=0
+        while True:
+            try_again += 1
+            # seed the drawing bowl with all player numbers
+            drawBowl=[]
+            for player_index in range(0,number_of_players):
+                drawBowl.append(player_index)
 
-        # draw all players randomly from bowl to the seating
-        while len(drawBowl)>0:
-            lady_luck=randrange(0,len(drawBowl))
-            self._seatinglist.append(drawBowl[lady_luck])
-            drawBowl.pop(lady_luck)
+            # draw all players randomly from bowl to the seating
+            self._seatinglist=[]
+            while len(drawBowl)>0:
+                lady_luck=randrange(0,len(drawBowl))
+                self._seatinglist.append(drawBowl[lady_luck])
+                drawBowl.pop(lady_luck)
+
+            self.deriveTournamentStructure()
+            self.calculate_fitness()
+
+            if self.isValid():
+                break
+            if try_again>3000:
+                raise Exception("Could not find a valid random gene")
 
     def clone_ancestor(self,ancestor_A):
         self._seatinglist=ancestor_A._seatinglist.copy()
@@ -113,7 +124,7 @@ class KartTournament:
                     if location in consolusage:
                         consolusage[location]+=number_of_consoles_for_team
                     else:
-                        consolusage[location]=1
+                        consolusage[location]=number_of_consoles_for_team
 
                     if location_seats%2==1:
                         emtpy_seats+=1
@@ -148,6 +159,9 @@ class KartTournament:
             else:
                 self._seatinglist.append(compressed_parent_B[seat_B_index])
                 seat_B_index+=1
+
+        self.deriveTournamentStructure()
+        self.calculate_fitness()
 
     def mutate(self):
         index_a = random.randrange(0, len(self._seatinglist))
@@ -232,17 +246,17 @@ class KartTournament:
             teams=pairing['teams']
             for team_index,team in enumerate(pairing['teams']):
                 if team_index>0:
-                    print(f" --- ( {teams[0]['skillsum']}  )  [{pairing['skilldiff']}  ]  ({teams[1]['skillsum']})  --- [{location_string}] empty seats:{pairing['empty_seat_count']}")
+                    print(f" >> {round(teams[0]['skillsum'],2)} >> [{round(pairing['skilldiff'],2)}] << {round(teams[1]['skillsum'],2)} << | total consoles:{pairing['total_console_count']} [{location_string}] empty seats:{pairing['empty_seat_count']}")
                 for team_member in team['members']:
                     playerproperty = self._playerproperties[team_member['player_index']]
-                    print(f"{playerproperty['name']} ({playerproperty['skill']})")
+                    print(f"{playerproperty['location']}-{playerproperty['name']} ({playerproperty['skill']})")
             print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
     def print_statistics(self):
         print (f"Fitness {self._fitness}")
         for pairing in self._pairings:
             teams=pairing['teams']
-            print(f"{len(teams[0]['members'])}({teams[0]['skillsum']})  \t[{pairing['skilldiff']}] \t{len(teams[1]['members'])}({teams[1]['skillsum']})")
+            print(f"{len(teams[0]['members'])}({round(teams[0]['skillsum'],2)})  \t[{round(pairing['skilldiff'],2)}] \t{len(teams[1]['members'])}({round(teams[1]['skillsum'],2)})")
 
 # end of class KartTournament
 
