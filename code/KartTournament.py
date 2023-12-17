@@ -4,6 +4,8 @@ from random import randrange
 RM_PMX='PMX'
 RM_OX1='OX1'
 
+FIT_WEIGHT_SKILLDIFF=20
+
 class KartTournament:
     """Object to represent a tournament, calculate its fitness and recombine it"""
     def __init__(self, playerproperties,parentTournament_A=None,parentTournament_B=None,recombinationMode=RM_PMX):
@@ -84,7 +86,7 @@ class KartTournament:
         pairingdiffsum=0
         for pairing in self._pairings:
             pairingdiffsum+=pairing['skilldiff']
-        self._fitness=pairingdiffsum
+        self._fitness=round(FIT_WEIGHT_SKILLDIFF/(1+pairingdiffsum),4)
 
     def print_pairings(self):
         for pairing in self._pairings:
@@ -97,6 +99,14 @@ class KartTournament:
                     playerproperty = self._playerproperties[team_member['player_index']]
                     print(f"{playerproperty['name']} ({playerproperty['skill']})")
             print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+
+    def print_statistics(self):
+        print("--------------------------------")
+        print (f"Fitness {self._fitness}")
+        for pairing in self._pairings:
+            teams=pairing['teams']
+            print(f"{len(teams[0]['members'])}({teams[0]['skillsum']})  \t[{pairing['skilldiff']}] \t{len(teams[1]['members'])}({teams[1]['skillsum']})")
+
 # end of class KartTournament
 
 g_playerproperties = [
@@ -135,10 +145,9 @@ def searchForOptimum():
     for tournament_index in range(0,POPULATION_SIZE):
         population.append(KartTournament(g_playerproperties))
 
-    population.sort(key=attrgetter('_fitness'))
+    population.sort(key=attrgetter('_fitness'),reverse=True)
     for placing_index, tournament in enumerate (population) :
-        print(f"Tournament fitness rank {placing_index+1} with fitness {tournament.__getattribute__('_fitness')}")
-        tournament.print_pairings()
+        tournament.print_statistics()
 
 
 
