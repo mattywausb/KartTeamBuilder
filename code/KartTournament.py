@@ -1,3 +1,4 @@
+from operator import attrgetter
 from random import randrange
 
 RM_PMX='PMX'
@@ -10,12 +11,16 @@ class KartTournament:
         self._seatinglist=[]
         self._pairsize=[4,4,3] #todo determine pairsize from playerproperties
         self._pairings=[]
+        self._fitness=999999
         if parentTournament_A == None or parentTournament_B == None:
             self.build_gene_from_scratch()
         elif recombinationMode==RM_PMX:
             self.build_from_PMX_crossover(parentTournament_A,parentTournament_B)
         elif recombinationMode==RM_OX1:
             self.build_from_OX1_crossover(parentTournament_A,parentTournament_B)
+
+        self.determineFitness()
+
 
     def build_gene_from_scratch(self):
         drawBowl=[]
@@ -55,10 +60,11 @@ class KartTournament:
             members.append(team_member)
         team = {'members': members}
         self.determine_team_skill(team)
-        teams.append(team)      
+        teams.append(team)
         pairing = {'teams': teams}
         self.determine_pairing_skill_releation(pairing)
         self._pairings.append(pairing)
+
 
     def determine_team_skill(self,team):
         skillsum=0
@@ -71,6 +77,14 @@ class KartTournament:
         teams=pairing['teams']
         skilldiff=abs(teams[0]['skillsum']-teams[1]['skillsum'])
         pairing['skilldiff']=skilldiff
+
+    def determineFitness(self):
+        """Evaluates the tournament against all criteria and determines a fitness value
+            the lower, the better"""
+        pairingdiffsum=0
+        for pairing in self._pairings:
+            pairingdiffsum+=pairing['skilldiff']
+        self._fitness=pairingdiffsum
 
     def print_pairings(self):
         for pairing in self._pairings:
@@ -85,7 +99,7 @@ class KartTournament:
             print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 # end of class KartTournament
 
-playerproperties = [
+g_playerproperties = [
     {'name':'Mario',          'skill': 1.25, 'location':'D'}
    ,{'name':'Luigi'         , 'skill': 1.25, 'location':'B'}
    ,{'name':'Bowser',         'skill': 1.25, 'location':'D'}
@@ -109,7 +123,26 @@ playerproperties = [
    ,{'name': 'Lakitu',        'skill': 1.00, 'location':'F'}
      ]
 
-if __name__ == '__main__':
-    myFirstGame=KartTournament(playerproperties)
+def singleTest():
+    myFirstGame=KartTournament(g_playerproperties)
     myFirstGame.print_pairings()
+    print(f"Fitness is {myFirstGame.getFitness()}")
+
+def searchForOptimum():
+    # create the initial population
+    POPULATION_SIZE=100
+    population=[]
+    for tournament_index in range(0,POPULATION_SIZE):
+        population.append(KartTournament(g_playerproperties))
+
+    population.sort(key=attrgetter('_fitness'))
+    for placing_index, tournament in enumerate (population) :
+        print(f"Tournament fitness rank {placing_index+1} with fitness {tournament.__getattribute__('_fitness')}")
+        tournament.print_pairings()
+
+
+
+if __name__ == '__main__':
+    #singleTest()
+    searchForOptimum()
 
