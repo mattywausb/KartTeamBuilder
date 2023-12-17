@@ -1,3 +1,5 @@
+import random
+from math import ceil
 from operator import attrgetter
 from random import randrange
 
@@ -5,22 +7,31 @@ RM_PMX='PMX'
 RM_OX1='OX1'
 
 FIT_WEIGHT_SKILLDIFF=20
+POPULATION_SIZE = 10
 
 class KartTournament:
     """Object to represent a tournament, calculate its fitness and recombine it"""
-    def __init__(self, playerproperties,parentTournament_A=None,parentTournament_B=None,recombinationMode=RM_PMX):
-        self._playerproperties = playerproperties
+    def __init__(self, playerproperties=None, locationproperties=None, ancestor_A=None, ancestor_B=None, recombinationMode=RM_PMX):
+        if (playerproperties != None and locationproperties != None):
+            self._playerproperties = playerproperties
+            self._locationproperties = locationproperties
+        else:
+            if ancestor_A==None:
+                raise Exception("No ancestor given, need playerproperties and location properties to create KartTournament")
+            self._playerproperties = ancestor_A._playerproperties
+            self._locationproperties = ancestor_A._locationproperties
         self._seatinglist=[]
-        self._pairsize=[4,4,3] #todo determine pairsize from playerproperties
+        self._pairsize=[4,4,3] #todo determine pairsize from member count in playerproperties
         self._pairings=[]
         self._fitness=999999
-        if parentTournament_A == None or parentTournament_B == None:
+        if ancestor_A == None or ancestor_B == None:
             self.build_gene_from_scratch()
         elif recombinationMode==RM_PMX:
-            self.build_from_PMX_crossover(parentTournament_A,parentTournament_B)
+            self.build_from_PMX_crossover(ancestor_A, ancestor_B)
         elif recombinationMode==RM_OX1:
-            self.build_from_OX1_crossover(parentTournament_A,parentTournament_B)
+            self.build_from_OX1_crossover(ancestor_A, ancestor_B)
 
+        self.deriveTournamentStructure()
         self.determineFitness()
 
 
@@ -36,7 +47,7 @@ class KartTournament:
             lady_luck=randrange(0,len(drawBowl))
             self._seatinglist.append(drawBowl[lady_luck])
             drawBowl.pop(lady_luck)
-        self.deriveTournamentStructure()
+
 
     def deriveTournamentStructure(self):
         """Fills the _pairings list with the tournament structure
@@ -46,6 +57,8 @@ class KartTournament:
                     """
         members=[]
         teams=[]
+        self._pairings = []
+        self._fitness = 999999
         for player_index in self._seatinglist:
             if len(members)>= self._pairsize[len(self._pairings)]: # current team is complete
                 team = {'members': members}
@@ -54,7 +67,7 @@ class KartTournament:
                 members=[]
                 if len(teams)>=2: # the pairing has two members
                     pairing={'teams':teams}
-                    self.determine_pairing_skill_releation(pairing)
+                    self.determine_pairing_skill_relation(pairing)
                     self._pairings.append(pairing)
                     teams=[]
             # place member in the current team
@@ -64,9 +77,89 @@ class KartTournament:
         self.determine_team_skill(team)
         teams.append(team)
         pairing = {'teams': teams}
-        self.determine_pairing_skill_releation(pairing)
+        self.determine_pairing_skill_relation(pairing)
         self._pairings.append(pairing)
 
+    def calculate_console_usage(self):
+        """Collect the needed console seats and add it as properties to the pairing
+            'location_console_counts': "<location name>": count
+            'empty_seat_count'
+            'total_console_count'
+        """
+        for pairing in self._pairings:
+            consolusage= {}
+            emtpy_seats=0
+            consoltotalcount=0
+            teams=pairing['teams']
+            for team in teams:
+                team_location_seats={}
+                for team_member in team['members']: #collect location of every teammember
+                    location=self._playerproperties[team_member['player_index']]['location']
+                    if location in team_location_seats:
+                        team_location_seats[location]+=1
+                    else:
+                        team_location_seats[location]=1
+                for location,location_seats in  team_location_seats.items(): # determine console count and empty seats
+                    number_of_consoles_for_team=ceil(location_seats/2)
+                    consoltotalcount += number_of_consoles_for_team
+                    if location in consolusage:
+                        consolusage[location]['console_count']+=number_of_consoles_for_team
+                    else:
+                        consolusage[location]={'console_count':1}
+
+                    if location_seats%2==1:
+                        emtpy_seats+=1
+            # After counting consols for all teams in the pairing, add the result to the pairing
+            pairing['location_console_counts']=consolusage
+            pairing['empty_seat_count']=emtpy_seats
+            pairing['total_console_count']=consoltotalcount
+
+
+    def build_from_PMX_crossover(self,parent_A,parent_B):
+
+        recombination_pattern=[]
+        seatcount=len(parent_A._seatinglist)
+        for seat_index in range(0,seatcount):
+           recombination_pattern.append(random.randrange(0,2))
+
+        compressed_parent_A=[]
+        for seat_index in range(0,seatcount):
+            if(recombination_pattern[seat_index])==0:
+                compressed_parent_A.append(parent_A._seatinglist[seat_index])
+
+        compressed_parent_B=[]
+        for seat_index in range(0,seatcount):
+            player=parent_A._seatinglist[seat_index]
+            if player not in compressed_parent_A:
+                compressed_parent_B.append(player)
+
+        seat_B_index=0
+        for seat_index in range(0,seatcount):
+            if(recombination_pattern[seat_index])==0:
+                self._seatinglist.append(parent_A._seatinglist[seat_index])
+            else:
+                self._seatinglist.append(compressed_parent_B[seat_B_index])
+                seat_B_index+=1
+
+    def mutate(self):
+        index_a = random.randrange(0, len(self._seatinglist))
+        index_b = index_a
+        try_again_determine_partner = 1
+        while try_again_determine_partner > 0:
+            try_again_determine_partner += 1
+            if try_again_determine_partner > 1000:  # safety against endless search (mostly because of coding mistakes)
+                raise Exception("could not leave search loop for mutation partner")
+            index_b = random.randrange(0, len(self._seatinglist))
+            if index_b != index_a:
+                try_again_determine_partner = 0  # signal to leave search partner loop
+
+        #swap places
+        extra_seat=self._seatinglist[index_a]
+        self._seatinglist[index_a]=self._seatinglist[index_b]
+        self._seatinglist[index_b]=extra_seat
+
+        self.deriveTournamentStructure()
+        self.determineFitness()
 
     def determine_team_skill(self,team):
         skillsum=0
@@ -75,7 +168,7 @@ class KartTournament:
             skillsum += playerproperty['skill']
         team['skillsum']=skillsum
 
-    def determine_pairing_skill_releation(self,pairing):
+    def determine_pairing_skill_relation(self,pairing):
         teams=pairing['teams']
         skilldiff=abs(teams[0]['skillsum']-teams[1]['skillsum'])
         pairing['skilldiff']=skilldiff
@@ -83,25 +176,45 @@ class KartTournament:
     def determineFitness(self):
         """Evaluates the tournament against all criteria and determines a fitness value
             the lower, the better"""
+        self.calculate_console_usage()
+
         pairingdiffsum=0
         for pairing in self._pairings:
             pairingdiffsum+=pairing['skilldiff']
         self._fitness=round(FIT_WEIGHT_SKILLDIFF/(1+pairingdiffsum),4)
 
+    def isValid(self):
+        #Todo: add hard healthchecks here
+        return True
+
+    def getFitness(self):
+        return self._fitness
+
+    def is_equal_to(self,otherTournament):
+        #todo extend comparison to swapped seats in same team
+        #todo extend comprison to swapped teams in same pairing
+        seatcount = len(self._seatinglist)
+        for seat_index in range(0, seatcount):
+            if self._seatinglist[seat_index] != otherTournament._seatinglist[seat_index]:
+                return False
+        return True
+
     def print_pairings(self):
         for pairing in self._pairings:
             print ("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
+            location_string=""
+            for location,location_entry in pairing['location_console_counts'].items():
+                location_string+= f" {location}={location_entry['console_count']} "
             teams=pairing['teams']
             for team_index,team in enumerate(pairing['teams']):
                 if team_index>0:
-                    print(f" --- ( {teams[0]['skillsum']}  )  [{pairing['skilldiff']}  ]  ({teams[1]['skillsum']})  ---")
+                    print(f" --- ( {teams[0]['skillsum']}  )  [{pairing['skilldiff']}  ]  ({teams[1]['skillsum']})  --- [{location_string}] empty seats:{pairing['empty_seat_count']}")
                 for team_member in team['members']:
                     playerproperty = self._playerproperties[team_member['player_index']]
                     print(f"{playerproperty['name']} ({playerproperty['skill']})")
             print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
     def print_statistics(self):
-        print("--------------------------------")
         print (f"Fitness {self._fitness}")
         for pairing in self._pairings:
             teams=pairing['teams']
@@ -110,48 +223,119 @@ class KartTournament:
 # end of class KartTournament
 
 g_playerproperties = [
-    {'name':'Mario',          'skill': 1.25, 'location':'D'}
-   ,{'name':'Luigi'         , 'skill': 1.25, 'location':'B'}
-   ,{'name':'Bowser',         'skill': 1.25, 'location':'D'}
-   ,{'name':'Princess Peach', 'skill': 1.25, 'location':'F'}
-   ,{'name':'Rosalina',       'skill': 1.25, 'location':'B'}
-   ,{'name':'Toad'          , 'skill': 1.00, 'location':'D'}
-   ,{'name':'Daisy',          'skill': 1.00, 'location':'F'}
-   ,{'name':'Link'          , 'skill': 1.00, 'location':'D'}
-   ,{'name':'Wario',          'skill': 1.00, 'location':'B'}
-   ,{'name':'Waluigi'       , 'skill': 1.00, 'location':'D'}
-   ,{'name':'Bowser Jr',      'skill': 0.75, 'location':'F'}
-   ,{'name':'Donkey Kong'   , 'skill': 0.75, 'location':'B'}
-   ,{'name':'Diddy Kong',     'skill': 0.75, 'location':'D'}
-   ,{'name':'Baby Mario'    , 'skill': 0.75, 'location':'B'}
-   ,{'name':'Baby Daisy',     'skill': 0.75, 'location':'B'}
-   ,{'name':'Baby Luigi'    , 'skill': 0.75, 'location':'B'}
-   ,{'name':'Wiggler',        'skill': 1.25, 'location':'D'}
-   ,{'name': 'Baby Peach',    'skill': 1.00, 'location':'F'}
-   ,{'name':'King Boo',       'skill': 1.25, 'location':'B'}
-   ,{'name': 'Baby Rosalina', 'skill': 1.00, 'location':'D'}
-   ,{'name': 'Lakitu',        'skill': 1.00, 'location':'F'}
+    {'name':'(A) Thomas J.'    , 'skill': 1.35, 'location':'D'}
+   ,{'name':'(A) Robert'       , 'skill': 1.35, 'location':'B'}
+   ,{'name':'(A) Alexander'    , 'skill': 1.35, 'location':'D'}
+   ,{'name':'(A) Oliver S'     , 'skill': 1.35, 'location':'F'}
+   ,{'name':'(A) Luca'         , 'skill': 1.35, 'location':'B'}
+   ,{'name':'(B) TvA'          , 'skill': 1.00, 'location':'D'}
+   ,{'name':'(B) Marc He.'     , 'skill': 1.00, 'location':'F'}
+   ,{'name':'(B) Christian K.' , 'skill': 1.00, 'location':'D'}
+   ,{'name':'(B) Maria'        , 'skill': 1.00, 'location':'B'}
+   ,{'name':'(B) Florian'      , 'skill': 1.00, 'location':'D'}
+   ,{'name':'(C) Marc Hü.'     , 'skill': 0.55, 'location':'F'}
+   ,{'name':'(C) Christian H.' , 'skill': 0.55, 'location':'B'}
+   ,{'name':'(C) Marcel'       , 'skill': 0.55, 'location':'D'}
+   ,{'name':'(C) John'         , 'skill': 0.55, 'location':'B'}
+   ,{'name':'(C) Sankalita'    , 'skill': 0.55, 'location':'B'}
+   ,{'name':'(C) Thomas P.'    , 'skill': 0.55, 'location':'B'}
+   ,{'name':'(A) Christina'    , 'skill': 1.35, 'location':'D'}
+   ,{'name':'(B) Ulrich K.'    , 'skill': 1.00, 'location':'F'}
+   ,{'name':'(A) Claudia'      , 'skill': 1.35, 'location':'B'}
+   ,{'name':'(B) Tarik'        , 'skill': 1.00, 'location':'D'}
+   ,{'name':'(B) Michael'      , 'skill': 1.00, 'location':'F'}
      ]
 
+g_location_properties ={
+    "B":{"consol_count":3},
+    "D": {"consol_count": 2},
+    "F": {"consol_count": 2},
+    "HH": {"consol_count": 2},
+}
+
 def singleTest():
-    myFirstGame=KartTournament(g_playerproperties)
+    myFirstGame=KartTournament(playerproperties= g_playerproperties,locationproperties=g_location_properties)
     myFirstGame.print_pairings()
     print(f"Fitness is {myFirstGame.getFitness()}")
 
+def print_populationTournamentStatistics(population):
+    for tournament_index, tournament in enumerate (population) :
+        print(f"------ Tournament Variation {tournament_index} ------")
+        tournament.print_statistics()
+
+
 def searchForOptimum():
     # create the initial population
-    POPULATION_SIZE=100
     population=[]
+    # initial random seed
     for tournament_index in range(0,POPULATION_SIZE):
-        population.append(KartTournament(g_playerproperties))
+        population.append(KartTournament(playerproperties= g_playerproperties,locationproperties=g_location_properties))
 
-    population.sort(key=attrgetter('_fitness'),reverse=True)
-    for placing_index, tournament in enumerate (population) :
-        tournament.print_statistics()
+    for generation in range(0,50):
+        print(f">>>>>>>>>>> GEN {generation} <<<<<<<<<<<")
+        population = create_successor_population(population)
+        population.sort(key=attrgetter('_fitness'), reverse=True)
+        print_populationTournamentStatistics(population)
+
+    print("")
+    print("######################################### Result ###########################################")
+    population.sort(key=attrgetter('_fitness'), reverse=True)
+    print_populationTournamentStatistics(population)
+    for pair_index in range(0,3):
+        print(f"******************************************** {pair_index} ({population[pair_index].getFitness()}) **********")
+        population[pair_index].print_pairings()
+
+
+def create_successor_population(ancestors):
+    ancestors.sort(key=attrgetter('_fitness'),reverse=True)
+    successors=[]
+    while len(successors)<POPULATION_SIZE:
+        try_again_recombination=1
+        while try_again_recombination>0:
+            try_again_recombination += 1
+            if try_again_recombination > 1000: # safety against endless search (mostly because of coding mistakes)
+                raise Exception("could not leave search loop valid successor")
+            index_a=int(random.triangular(0,POPULATION_SIZE,0))
+            index_b=index_a
+            try_again_determine_partner=1
+            while try_again_determine_partner>0:
+                try_again_determine_partner+=1
+                if try_again_determine_partner>1000: # safety against endless search (mostly because of coding mistakes)
+                    raise Exception("could not leave search loop for recombination partner")
+                index_b=int(random.triangular(0,POPULATION_SIZE,0))
+                if index_b != index_a:
+                    try_again_determine_partner=0 # signal to leave search partner loop
+            #print(f"trying {index_a},{index_b}")
+            partner_a=ancestors[index_a]
+            partner_b=ancestors[index_b]
+            new_successor = KartTournament(ancestor_A= partner_a, ancestor_B= partner_b)
+            if new_successor.isValid():
+                ensure_uniquenes_by_mutation(new_successor, successors)
+                successors.append(new_successor)
+                try_again_recombination=0  # signal to leave recombination loop
+                #print(f"combined {index_a},{index_b}")
+    return successors
+
+def ensure_uniquenes_by_mutation(new_successor,successors):
+    for tries in range (0,100):
+        is_unique=True
+        for established_tournament in successors:
+            if new_successor.is_equal_to(established_tournament):
+                is_unique=False
+                break
+        if is_unique:
+            return
+        else:
+            new_successor.mutate()
+
+
 
 
 
 if __name__ == '__main__':
     #singleTest()
     searchForOptimum()
+    #for i in range(0,10):
+    #    print(random.triangular(0.0,100.0,0.0))
+
 
