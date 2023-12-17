@@ -7,7 +7,7 @@ When organizing a Mario Kart Tournament for many people with different skills (e
 ## Criterias, checked:
 - skill class of participants
 - Location of participants, for allowing to play together from multiple locations
-- Number of Switch Consoles available on every location
+- Number of Nintendo Switch™ consoles available on every location
 - Previous pairings as team member or opponent
 - target number of teammates (must be less or equal to number of places at each location)
 
