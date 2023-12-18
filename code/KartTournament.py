@@ -1,3 +1,4 @@
+import json
 import random
 from math import ceil
 from operator import attrgetter
@@ -249,7 +250,7 @@ class KartTournament:
                     print(f" >> {round(teams[0]['skillsum'],2)} >> [{round(pairing['skilldiff'],2)}] << {round(teams[1]['skillsum'],2)} << | total consoles:{pairing['total_console_count']} [{location_string}] empty seats:{pairing['empty_seat_count']}")
                 for team_member in team['members']:
                     playerproperty = self._playerproperties[team_member['player_index']]
-                    print(f"{playerproperty['location']}-{playerproperty['name']} ({playerproperty['skill']})")
+                    print(f"[{team_member['player_index']}]{playerproperty['location']}-{playerproperty['name']} ({playerproperty['skill']})")
             print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
     def print_statistics(self):
@@ -261,27 +262,27 @@ class KartTournament:
 # end of class KartTournament
 
 g_playerproperties = [
-    {'name':'(A) Thomas J.'    , 'skill': 1.35, 'location':'D'}
-   ,{'name':'(A) Robert'       , 'skill': 1.35, 'location':'B'}
-   ,{'name':'(A) Alexander'    , 'skill': 1.35, 'location':'D'}
-   ,{'name':'(A) Oliver S'     , 'skill': 1.35, 'location':'F'}
-   ,{'name':'(A) Luca'         , 'skill': 1.35, 'location':'B'}
-   ,{'name':'(B) TvA'          , 'skill': 1.00, 'location':'D'}
-   ,{'name':'(B) Marc He.'     , 'skill': 1.00, 'location':'F'}
-   ,{'name':'(B) Christian K.' , 'skill': 1.00, 'location':'D'}
-   ,{'name':'(B) Maria'        , 'skill': 1.00, 'location':'B'}
-   ,{'name':'(B) Florian'      , 'skill': 1.00, 'location':'D'}
-   ,{'name':'(C) Marc Hü.'     , 'skill': 0.55, 'location':'F'}
-   ,{'name':'(C) Christian H.' , 'skill': 0.55, 'location':'B'}
-   ,{'name':'(C) Marcel'       , 'skill': 0.55, 'location':'D'}
-   ,{'name':'(C) John'         , 'skill': 0.55, 'location':'B'}
-   ,{'name':'(C) Sankalita'    , 'skill': 0.55, 'location':'B'}
-   ,{'name':'(C) Thomas P.'    , 'skill': 0.55, 'location':'B'}
-   ,{'name':'(A) Christina'    , 'skill': 1.35, 'location':'D'}
-   ,{'name':'(B) Ulrich K.'    , 'skill': 1.00, 'location':'F'}
-   ,{'name':'(A) Claudia'      , 'skill': 1.35, 'location':'B'}
-   ,{'name':'(B) Tarik'        , 'skill': 1.00, 'location':'D'}
-   ,{'name':'(B) Michael'      , 'skill': 1.00, 'location':'F'}
+    {'player_id':'00', 'name':'(A) Thomas J.'    , 'skill': 1.35, 'location':'D'}
+   ,{'player_id':'01', 'name':'(A) Robert'       , 'skill': 1.35, 'location':'B'}
+   ,{'player_id':'02', 'name':'(A) Alexander'    , 'skill': 1.35, 'location':'D'}
+   ,{'player_id':'03', 'name':'(A) Oliver S'     , 'skill': 1.35, 'location':'F'}
+   ,{'player_id':'04', 'name':'(A) Luca'         , 'skill': 1.35, 'location':'B'}
+   ,{'player_id':'05', 'name':'(B) TvA'          , 'skill': 1.00, 'location':'D'}
+   ,{'player_id':'06', 'name':'(B) Marc He.'     , 'skill': 1.00, 'location':'F'}
+   ,{'player_id':'07', 'name':'(B) Christian K.' , 'skill': 1.00, 'location':'D'}
+   ,{'player_id':'08', 'name':'(B) Maria'        , 'skill': 1.00, 'location':'B'}
+   ,{'player_id':'09', 'name':'(B) Florian'      , 'skill': 1.00, 'location':'D'}
+   ,{'player_id':'10', 'name':'(C) Marc Hü.'     , 'skill': 0.55, 'location':'F'}
+   ,{'player_id':'11', 'name':'(C) Christian H.' , 'skill': 0.55, 'location':'B'}
+   ,{'player_id':'12', 'name':'(C) Marcel'       , 'skill': 0.55, 'location':'D'}
+   ,{'player_id':'13', 'name':'(C) John'         , 'skill': 0.55, 'location':'B'}
+   ,{'player_id':'14', 'name':'(C) Sankalita'    , 'skill': 0.55, 'location':'B'}
+   ,{'player_id':'15', 'name':'(C) Thomas P.'    , 'skill': 0.55, 'location':'B'}
+   ,{'player_id':'16', 'name':'(A) Christina'    , 'skill': 1.35, 'location':'D'}
+   ,{'player_id':'17', 'name':'(B) Ulrich K.'    , 'skill': 1.00, 'location':'F'}
+   ,{'player_id':'18', 'name':'(A) Claudia'      , 'skill': 1.35, 'location':'B'}
+   ,{'player_id':'19', 'name':'(B) Tarik'        , 'skill': 1.00, 'location':'D'}
+   ,{'player_id':'20', 'name':'(B) Michael'      , 'skill': 1.00, 'location':'F'}
      ]
 
 g_location_properties ={
@@ -290,6 +291,71 @@ g_location_properties ={
     "F": {"console_count": 1},
     "HH": {"console_count": 2},
 }
+
+g_tournament_history = [
+    {'tournament_id':1,
+                   'games': [{'teams':[{'team_id':'asj29as','members': ['20','01','15','03'],'placement':1} # 1st place
+                                       ,{'team_id':'fdja029','members':['12','08','00','18'],'placement':2}] #2nd place
+                              },
+                            {'teams':[{'team_id':'a423faa','members':  ['04','14','16','19'],'placement':0}
+                                       ,{'team_id':'fdja029','members':['02','13','07','17'],'placement':0}] # 0 = draw -1 = canceled
+                              },
+                            {'teams': [{'team_id': 'w35v1232', 'members': ['11','10','06'], 'placement': 2}
+                                 , {'team_id': '534we5g', 'members': ['05','09'], 'placement': 1}]
+                              }
+                             ]
+     }
+]
+
+def addTourmentHistoryToPlayerStats():
+    """Calculate kpi and relation tables for every person from the game history """
+    for player in g_playerproperties:
+        for tournament in g_tournament_history:
+            for game in tournament['games']:
+                addGameHistoryToPlayerStats(game,player)
+
+def addGameHistoryToPlayerStats(game,player):
+    player_id=player['player_id']
+    own_team_index=-1
+
+    #search for own tean
+    for team_index, team in enumerate(game['teams']):
+        if player_id in team['members']:
+            own_team_index=team_index
+            break
+
+    if own_team_index == -1:
+        return   # player was not participant in this game
+
+    own_team=game['teams'][own_team_index]
+
+    if 'former_teammates' not in player:
+        player['former_teammates']={}
+    former_teammates=player['former_teammates']
+    for member_id in own_team['members']:
+        if member_id == player_id:
+            continue
+        if member_id not in former_teammates:
+            former_teammates[member_id] = 1
+        else:
+            former_teammates[member_id] += 1
+
+    if 'former_opponents' not in player:
+        player['former_opponents']={}
+    former_opponents=player['former_opponents']
+    for  team_index, opponent_team in enumerate(game['teams']):
+        if team_index == own_team_index:
+            continue
+        for member_id in opponent_team['members']:
+            if member_id not in former_opponents:
+                former_opponents[member_id] = 1
+            else:
+                former_opponents[member_id] += 1
+
+
+
+
+
 
 def singleTest():
     myFirstGame=KartTournament(playerproperties= g_playerproperties,locationproperties=g_location_properties)
@@ -383,7 +449,9 @@ def ensure_uniquenes_by_mutation(new_successor,successors):
 
 if __name__ == '__main__':
     #singleTest()
-    searchForOptimum()
+    addTourmentHistoryToPlayerStats()
+    print(json.dumps(g_playerproperties,indent=4))
+    #searchForOptimum()
     #for i in range(0,10):
     #    print(random.triangular(0.0,100.0,0.0))
 
