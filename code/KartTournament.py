@@ -8,8 +8,11 @@ RM_PMX='PMX'
 RM_OX1='OX1'
 RM_COPY='COPY'
 
-FIT_WEIGHT_SKILLDIFF=20
-POPULATION_SIZE = 300
+FIT_WEIGHT_SKILLDIFF=50
+FIT_WEIGHT_MATESIMILARITY=20
+
+POPULATION_SIZE = 600
+MAX_GENERATIONS = 40
 
 class KartTournament:
     """Object to represent a tournament, calculate its fitness and recombine it"""
@@ -26,6 +29,8 @@ class KartTournament:
         self._pairsize=[4,4,3] #todo determine pairsize from member count in playerproperties
         self._pairings=[]
         self._fitness=999999
+        self._fitness_of_skill=999999
+        self._fitness_of_player_history=999999
         if ancestor_A == None :
             self.build_gene_from_scratch()
         elif ancestor_B == None:
@@ -203,11 +208,37 @@ class KartTournament:
             the lower, the better"""
         self.calculate_console_usage()
 
-        pairingdiffsum=0
+        skilldiffsum=0
         for pairing in self._pairings:
-            pairingdiffsum+=pairing['skilldiff']
+            skilldiffsum+=pairing['skilldiff']
 
-        self._fitness=round(FIT_WEIGHT_SKILLDIFF/(1+pairingdiffsum),4)
+        self._fitness_of_skill=round(FIT_WEIGHT_SKILLDIFF/(1+skilldiffsum),4)
+
+        former_teammate_similarity=self.calculateFormerTeammateSimilarity()
+
+        self._fitness_of_player_history=round(FIT_WEIGHT_MATESIMILARITY/(1+former_teammate_similarity),4)
+
+        self._fitness=self._fitness_of_player_history+self._fitness_of_skill
+
+    def calculateFormerTeammateSimilarity(self,print_hits=False):
+        """Determines how often players are grouped with players, they already played with"""
+        teammateSimilarity=0
+        for pairing in self._pairings:
+            for team in pairing['teams']:
+                members=team['members']
+                for member_index, member in enumerate(members): # note: members dict with player_index
+                    if member_index+1 >= len(members): # nothing to compare for the last member
+                        break
+                    player_index=member['player_index']
+                    former_teammates=self._playerproperties[player_index]['former_teammates']
+                    for mate_index in range(member_index+1,len(members)): #only compare with members after current  in list
+                        mate_player=self._playerproperties[members[mate_index]['player_index']]
+                        mate_player_id=mate_player['player_id']
+                        if mate_player_id in former_teammates:
+                            teammateSimilarity += former_teammates[mate_player_id]
+                            if print_hits:
+                                print(f"Similar mate pairing {player_index} + {mate_player_id} : {former_teammates[mate_player_id]}")
+        return teammateSimilarity
 
     def isValid(self):
 
@@ -254,7 +285,7 @@ class KartTournament:
             print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
     def print_statistics(self):
-        print (f"Fitness {self._fitness}")
+        print (f"Fitness {self._fitness}  (Skill:{self._fitness_of_skill}, History:{self._fitness_of_player_history})")
         for pairing in self._pairings:
             teams=pairing['teams']
             print(f"{len(teams[0]['members'])}({round(teams[0]['skillsum'],2)})  \t[{round(pairing['skilldiff'],2)}] \t{len(teams[1]['members'])}({round(teams[1]['skillsum'],2)})")
@@ -304,6 +335,19 @@ g_tournament_history = [
                                  , {'team_id': '534we5g', 'members': ['05','09'], 'placement': 1}]
                               }
                              ]
+     },
+    {'tournament_id': 2,
+     'games': [{'teams': [{'team_id': 'andt4as', 'members': ['14', '03', '08', '06'], 'placement': 1}  # 1st place
+         , {'team_id': 'fdja029', 'members': ['00', '16', '07', '15'], 'placement': 2}]  # 2nd place
+                },
+               {'teams': [{'team_id': 'a423faa', 'members': ['13', '19', '01', '05'], 'placement': 0}
+                   , {'team_id': 'fdja029', 'members': ['20', '11', '17', '04'], 'placement': 0}]
+                # 0 = draw -1 = canceled
+                },
+               {'teams': [{'team_id': 'w35v1232', 'members': ['12', '02', '10'], 'placement': 2}
+                   , {'team_id': '534we5g', 'members': ['18', '09'], 'placement': 1}]
+                }
+               ]
      }
 ]
 
@@ -318,6 +362,12 @@ def addGameHistoryToPlayerStats(game,player):
     player_id=player['player_id']
     own_team_index=-1
 
+    # ensure, the history elements are in the structure
+    if 'former_teammates' not in player:
+        player['former_teammates'] = {}
+    if 'former_opponents' not in player:
+        player['former_opponents']={}
+
     #search for own tean
     for team_index, team in enumerate(game['teams']):
         if player_id in team['members']:
@@ -329,8 +379,6 @@ def addGameHistoryToPlayerStats(game,player):
 
     own_team=game['teams'][own_team_index]
 
-    if 'former_teammates' not in player:
-        player['former_teammates']={}
     former_teammates=player['former_teammates']
     for member_id in own_team['members']:
         if member_id == player_id:
@@ -340,8 +388,7 @@ def addGameHistoryToPlayerStats(game,player):
         else:
             former_teammates[member_id] += 1
 
-    if 'former_opponents' not in player:
-        player['former_opponents']={}
+
     former_opponents=player['former_opponents']
     for  team_index, opponent_team in enumerate(game['teams']):
         if team_index == own_team_index:
@@ -382,7 +429,7 @@ def searchForOptimum():
     for tournament_index in range(0,POPULATION_SIZE):
         population.append(KartTournament(playerproperties= g_playerproperties,locationproperties=g_location_properties))
 
-    for generation in range(0,50):
+    for generation in range(0,MAX_GENERATIONS):
         print(f">>>>>>>>>>> GEN {generation} <<<<<<<<<<<")
         population = create_successor_population(population)
         #population.sort(key=attrgetter('_fitness'), reverse=True)
@@ -396,6 +443,7 @@ def searchForOptimum():
     print_populationTournamentStatisticsVerboose(population,limit=10)
     for pair_index in range(0,3):
         print(f"******************************************** {pair_index} ({population[pair_index].getFitness()}) **********")
+        population[pair_index].calculateFormerTeammateSimilarity(print_hits=True)
         population[pair_index].print_pairings()
 
 
@@ -451,7 +499,7 @@ if __name__ == '__main__':
     #singleTest()
     addTourmentHistoryToPlayerStats()
     print(json.dumps(g_playerproperties,indent=4))
-    #searchForOptimum()
+    searchForOptimum()
     #for i in range(0,10):
     #    print(random.triangular(0.0,100.0,0.0))
 
