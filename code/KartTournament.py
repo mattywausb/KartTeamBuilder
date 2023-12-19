@@ -281,7 +281,7 @@ class KartTournament:
                     print(f" >> {round(teams[0]['skillsum'],2)} >> [{round(pairing['skilldiff'],2)}] << {round(teams[1]['skillsum'],2)} << | total consoles:{pairing['total_console_count']} [{location_string}] empty seats:{pairing['empty_seat_count']}")
                 for team_member in team['members']:
                     playerproperty = self._playerproperties[team_member['player_index']]
-                    print(f"[{team_member['player_index']}]{playerproperty['location']}-{playerproperty['name']} ({playerproperty['skill']})")
+                    print(f"[{playerproperty['player_id']}]{playerproperty['location']}-{playerproperty['name']} ({playerproperty['skill']})")
             print ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
     def print_statistics(self):
