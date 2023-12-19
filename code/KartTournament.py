@@ -11,8 +11,8 @@ RM_COPY='COPY'
 FIT_WEIGHT_SKILLDIFF=50
 FIT_WEIGHT_MATESIMILARITY=20
 
-POPULATION_SIZE = 600
-MAX_GENERATIONS = 50
+POPULATION_SIZE = 700
+MAX_GENERATIONS = 70
 
 class KartTournament:
     """Object to represent a tournament, calculate its fitness and recombine it"""
@@ -515,12 +515,15 @@ def assembleTournament(print_trace=False):
         population.append(KartTournament(playerproperties= g_playerproperties,locationproperties=g_location_properties))
 
     for generation in range(0,MAX_GENERATIONS):
-        print(f">>>>>>>>>>> GEN {generation} <<<<<<<<<<<")
+        print(f"{generation}.",end='')
+        if (generation+1)%20==0:
+            print("")
         population = create_successor_population(population)
         #population.sort(key=attrgetter('_fitness'), reverse=True)
         #print_populationTournamentStatisticsMain(population)
         #print_populationTournamentStatisticsVerboose(population)
 
+    print("")
     if print_trace:
         print("")
         print("######################################### Result ###########################################")
@@ -549,7 +552,7 @@ def mockTournamentExecution(tournament_plan):
             else:
                 team['placement'] = 2
 
-def determineGameScores(tournament_plan):
+def determineGameScores(tournament_plan,win_bonus=0):
     for game in tournament_plan['games']:
         for team_index,team in enumerate(game['teams']):
            if team_index == 0 :
@@ -557,8 +560,8 @@ def determineGameScores(tournament_plan):
            else:
                opponent_team=game['teams'] [0]
            team['score']=0
-           if team['placement']<opponent_team['placement']:
-                team['score']=10
+           if team['placement']<opponent_team['placement']: # win
+                team['score']=10+win_bonus
            elif team['placement']>opponent_team['placement']:
                 if team['team_skill']<opponent_team['team_skill']-0.2:
                     team['score'] = -5
@@ -574,33 +577,38 @@ def addTournamentToEventHistory(tournament_plan):
         histGames.append(histGame)
 
 def addGameScoresToPlayerProperties(tournament_plan):
-    for game in tournament_plan['games']:
-        for team in game['teams']:
-            for member in team['members']:
-                for player in g_playerproperties:
-                    if player['player_id'] == member:
-                        if 'score' not in player:
-                            player['score']=team['score']
-                        else:
-                            player['score'] += team['score']
-                        break
+    for player in g_playerproperties:
+        player_id=player['player_id']
+        if 'score' not in player:
+            player['score']=0
+        for game in tournament_plan['games']:
+            for team in game['teams']:
+                for member in team['members']:
+                    if player_id == member:
+                           player['score'] += team['score']
 
 def simulateEvent(numberOfTournaments):
     for tournament in range (0,numberOfTournaments):
+        print (f"######## Simulating Tournament {tournament+1} #############")
         transformEventGameHistoryIntoPlayerStats()
         tournament_plan=assembleTournament()
         mockTournamentExecution(tournament_plan)
-        determineGameScores(tournament_plan)
+        determineGameScores(tournament_plan,tournament)
         addGameScoresToPlayerProperties(tournament_plan)
         addTournamentToEventHistory(tournament_plan)
         ##print(json.dumps(tournament_plan, indent=4, sort_keys=True))
-        print_playerScores()
+        #print_playerScores()
         addTournamentToEventHistory(tournament_plan)
         #print(json.dumps(g_event_game_history,indent=4, sort_keys=True ))
 
 if __name__ == '__main__':
     #singleTest()
-    simulateEvent(3)
+    simulateEvent(5)
+    g_playerproperties.sort(key=lambda k: k['score'],reverse=True)
+    print("")
+    print(" ##############  Final event placement ##############")
+    print_playerScores()
+
 
 
 
