@@ -307,8 +307,9 @@ class KartTournament:
                 planTeams.append(planTeam)
                 for member in team['members']:
                     planMembers.append(self._playerproperties[member['player_index']]['player_id'])
+        return tournamentPlan
 
-        print(json.dumps(tournamentPlan,indent=4,sort_keys=True))
+
 
 
 #   for
@@ -358,7 +359,8 @@ g_location_properties ={
     "HH": {"console_count": 2},
 }
 
-g_tournament_history = [
+g_event_game_history = []
+ga_event_game_history = [
     {'tournament_id':1,
                    'games': [{'teams':[{'team_id':'asj29as','members': ['20','01','15','03'],'placement':1} # 1st place
                                        ,{'team_id':'fdja029','members':['12','08','00','18'],'placement':2}] #2nd place
@@ -386,7 +388,7 @@ g_tournament_history = [
      }
 ]
 
-def addTourmentHistoryToPlayerStats():
+def transformEventGameHistoryIntoPlayerStats():
     """Calculate kpi and relation tables for every person from the game history """
     for player in g_playerproperties:
         # ensure, empty history elements are in the player dictionary
@@ -394,7 +396,7 @@ def addTourmentHistoryToPlayerStats():
         player['former_opponents'] = {}
 
         # now gather the data from the history
-        for tournament in g_tournament_history:
+        for tournament in g_event_game_history:
             for game in tournament['games']:
                 addGameHistoryToPlayerStats(game,player)
 
@@ -451,33 +453,11 @@ def print_populationTournamentStatisticsMain(population):
     for tournament_index, tournament in enumerate (population) :
         print(f"{tournament_index}. {tournament.getFitness()} ")
 
-
-def assembleTournament():
-    """Creates a tournament setupt, based on the current player and location """
-    # create the initial population
-    population=[]
-    # initial random seed
-    for tournament_index in range(0,POPULATION_SIZE):
-        population.append(KartTournament(playerproperties= g_playerproperties,locationproperties=g_location_properties))
-
-    for generation in range(0,MAX_GENERATIONS):
-        print(f">>>>>>>>>>> GEN {generation} <<<<<<<<<<<")
-        population = create_successor_population(population)
-        #population.sort(key=attrgetter('_fitness'), reverse=True)
-        #print_populationTournamentStatisticsMain(population)
-        #print_populationTournamentStatisticsVerboose(population)
+def print_playerScores():
+    for player in g_playerproperties:
+        print(f"[{player['player_id']}] {player['name']}:{player['score']}")
 
 
-    print("")
-    print("######################################### Result ###########################################")
-    population.sort(key=attrgetter('_fitness'), reverse=True)
-    print_populationTournamentStatisticsVerboose(population,limit=10)
-    for pair_index in range(0,3):
-        print(f"******************************************** {pair_index} ({population[pair_index].getFitness()}) ****************************************************************")
-        population[pair_index].calculateFormerTeammateSimilarity(print_hits=True)
-        population[pair_index].print_pairings()
-
-    return population[0].renderTournamentPlan()
 
 
 
@@ -526,14 +506,102 @@ def ensure_uniquenes_by_mutation(new_successor,successors):
             new_successor.mutate()
 
 
+def assembleTournament(print_trace=False):
+    """Creates a tournament setupt, based on the current player and location """
+    # create the initial population
+    population=[]
+    # initial random seed
+    for tournament_index in range(0,POPULATION_SIZE):
+        population.append(KartTournament(playerproperties= g_playerproperties,locationproperties=g_location_properties))
 
+    for generation in range(0,MAX_GENERATIONS):
+        print(f">>>>>>>>>>> GEN {generation} <<<<<<<<<<<")
+        population = create_successor_population(population)
+        #population.sort(key=attrgetter('_fitness'), reverse=True)
+        #print_populationTournamentStatisticsMain(population)
+        #print_populationTournamentStatisticsVerboose(population)
+
+    if print_trace:
+        print("")
+        print("######################################### Result ###########################################")
+        population.sort(key=attrgetter('_fitness'), reverse=True)
+        print_populationTournamentStatisticsVerboose(population,limit=10)
+        for pair_index in range(0,3):
+            print(f"******************************************** {pair_index} ({population[pair_index].getFitness()}) ****************************************************************")
+            population[pair_index].calculateFormerTeammateSimilarity(print_hits=True)
+            population[pair_index].print_pairings()
+    else:
+        population[0].calculateFormerTeammateSimilarity(print_hits=True)
+        population[0].print_pairings()
+
+    return population[0].renderTournamentPlan()
+
+
+def mockTournamentExecution(tournament_plan):
+    for game in tournament_plan['games']:
+        winner=random.randrange(0,2)
+        draw=random.randrange(0,200)
+        for team_index,team in enumerate(game['teams']):
+            if draw==0:
+                team['placement']=0
+            elif team_index==winner:
+                team['placement'] = 1
+            else:
+                team['placement'] = 2
+
+def determineGameScores(tournament_plan):
+    for game in tournament_plan['games']:
+        for team_index,team in enumerate(game['teams']):
+           if team_index == 0 :
+               opponent_team= game['teams'] [1]
+           else:
+               opponent_team=game['teams'] [0]
+           team['score']=0
+           if team['placement']<opponent_team['placement']:
+                team['score']=10
+           elif team['placement']>opponent_team['placement']:
+                if team['team_skill']<opponent_team['team_skill']-0.2:
+                    team['score'] = -5
+                else:
+                    team['score'] = -10
+
+def addTournamentToEventHistory(tournament_plan):
+    histGames=[]
+    histTournament={'games':histGames}
+    g_event_game_history.append(histTournament)
+    for game in tournament_plan['games']:
+        histGame=game.copy()
+        histGames.append(histGame)
+
+def addGameScoresToPlayerProperties(tournament_plan):
+    for game in tournament_plan['games']:
+        for team in game['teams']:
+            for member in team['members']:
+                for player in g_playerproperties:
+                    if player['player_id'] == member:
+                        if 'score' not in player:
+                            player['score']=team['score']
+                        else:
+                            player['score'] += team['score']
+                        break
+
+def simulateEvent(numberOfTournaments):
+    for tournament in range (0,numberOfTournaments):
+        transformEventGameHistoryIntoPlayerStats()
+        tournament_plan=assembleTournament()
+        mockTournamentExecution(tournament_plan)
+        determineGameScores(tournament_plan)
+        addGameScoresToPlayerProperties(tournament_plan)
+        addTournamentToEventHistory(tournament_plan)
+        ##print(json.dumps(tournament_plan, indent=4, sort_keys=True))
+        print_playerScores()
+        addTournamentToEventHistory(tournament_plan)
+        #print(json.dumps(g_event_game_history,indent=4, sort_keys=True ))
 
 if __name__ == '__main__':
     #singleTest()
-    addTourmentHistoryToPlayerStats()
-    #print(json.dumps(g_playerproperties,indent=4))
-    assembleTournament()
-    #for i in range(0,10):
-    #    print(random.triangular(0.0,100.0,0.0))
+    simulateEvent(3)
+
+
 
 
