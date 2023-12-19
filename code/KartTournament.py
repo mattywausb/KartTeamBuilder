@@ -12,7 +12,7 @@ FIT_WEIGHT_SKILLDIFF=50
 FIT_WEIGHT_MATESIMILARITY=20
 
 POPULATION_SIZE = 600
-MAX_GENERATIONS = 3
+MAX_GENERATIONS = 50
 
 class KartTournament:
     """Object to represent a tournament, calculate its fitness and recombine it"""
@@ -473,7 +473,7 @@ def assembleTournament():
     population.sort(key=attrgetter('_fitness'), reverse=True)
     print_populationTournamentStatisticsVerboose(population,limit=10)
     for pair_index in range(0,3):
-        print(f"******************************************** {pair_index} ({population[pair_index].getFitness()}) **********")
+        print(f"******************************************** {pair_index} ({population[pair_index].getFitness()}) ****************************************************************")
         population[pair_index].calculateFormerTeammateSimilarity(print_hits=True)
         population[pair_index].print_pairings()
 
